@@ -1,0 +1,8 @@
+.pedidos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 1rem; }
+article { background: #fff; border: 1px solid #b6c0cc; border-left: 5px solid #667788; border-radius: .3rem; padding: 1rem; }
+article.urgente { border-left-color: #9b6500; background: #fff7e5; }
+article.atrasado { border-left-color: #af2424; background: #fff0f0; }
+h2 { font-size: 1.15rem; }
+.contador { font-weight: 700; font-variant-numeric: tabular-nums; }
+form { border-top: 1px solid #b6c0cc; margin-top: 1rem; padding-top: 1rem; }
+textarea { width: 100%; margin: .5rem 0; }

@@ -1,0 +1,6 @@
+header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; background: #fff; border-bottom: 1px solid #ccd3db; }
+nav { display: flex; gap: 1rem; }
+a { padding: .5rem; color: #174a80; }
+a.ativo { font-weight: 700; text-decoration-thickness: 3px; }
+main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem; }
+@media (max-width: 450px) { header { align-items: start; flex-direction: column; } }

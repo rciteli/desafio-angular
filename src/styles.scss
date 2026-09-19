@@ -1,0 +1,15 @@
+* { box-sizing: border-box; }
+body { margin: 0; font: 16px/1.5 system-ui, sans-serif; color: #202e3d; background: #f4f6f8; }
+h1 { font-size: 1.7rem; margin: 0; }
+h2, p { margin: 0 0 .75rem; }
+button, input, select, textarea { font: inherit; border: 1px solid #778696; border-radius: .25rem; padding: .5rem .7rem; background: #fff; color: inherit; }
+button { cursor: pointer; }
+button:hover:not(:disabled) { background: #e8edf2; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+:focus-visible { outline: 3px solid #155bb3; outline-offset: 3px; }
+label { display: block; }
+.cabecalho, .acoes { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.cabecalho { justify-content: space-between; }
+.ajuda { color: #46566a; }
+.erro, .aviso { padding: 1rem; margin: 1rem 0; border: 1px solid #b9853b; background: #fff7e5; border-radius: .25rem; }
+.erro { border-color: #b53232; background: #fff0f0; }

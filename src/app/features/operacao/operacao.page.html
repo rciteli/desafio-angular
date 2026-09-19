@@ -1,0 +1,57 @@
+<div class="cabecalho">
+  <h1>Operação</h1>
+  <p role="status">
+    @switch (stream.conexao()) {
+      @case ('conectado') { Conectado }
+      @case ('conectando') { Conectando… }
+      @case ('reconectando') { Reconectando… }
+    }
+  </p>
+</div>
+<p class="ajuda">Pedidos ativos · Horários de São Paulo</p>
+@if (mensagem()) { <p role="status" class="aviso">{{ mensagem() }}</p> }
+@if (erro()) {
+  <div role="alert" class="erro">
+    <p>{{ erro() }}</p>
+    <button type="button" (click)="recarregar()" [disabled]="carregando()">Tentar novamente</button>
+  </div>
+}
+@if (carregando()) { <p role="status">Carregando pedidos…</p> }
+<div class="pedidos" [attr.aria-busy]="carregando()">
+  @for (card of cards(); track card.pedido.id) {
+    @let pedido = card.pedido;
+    <article [class.urgente]="card.restante !== null && card.restante >= 0 && card.restante < 300000"
+      [class.atrasado]="card.restante !== null && card.restante < 0">
+      <div class="cabecalho"><h2>{{ pedido.codigo }}</h2><span>{{ labels[pedido.status] }}</span></div>
+      <p>{{ pedido.clienteNome }}</p>
+      <p class="contador">{{ card.texto }}</p>
+      <p class="ajuda">Prometido: {{ horario(pedido.prometidoPara) }}</p>
+      <div class="acoes">
+        @for (para of acoes(pedido.status); track para) {
+          <button type="button" [disabled]="processando().has(pedido.id) || desatualizados().has(pedido.id)"
+            (click)="para === 'CANCELADO' ? abrirCancelamento(pedido) : transicionar(pedido.id, para)">
+            {{ labelsAcoes[para] }}
+          </button>
+        }
+      </div>
+      @if (processando().has(pedido.id)) { <p role="status">Enviando…</p> }
+      @if (desatualizados().has(pedido.id)) { <p>Atualização pendente. Use “Tentar novamente”.</p> }
+      @if (cancelamento(); as form) {
+        @if (form.id === pedido.id) {
+          <form (submit)="confirmarCancelamento($event)">
+            <label [for]="'motivo-' + pedido.id">Motivo do cancelamento (mínimo 10 caracteres)</label>
+            <textarea #motivoInput [id]="'motivo-' + pedido.id" required minlength="10" rows="3"
+              [value]="form.motivo" (input)="editarMotivo(motivoInput.value)"
+              [disabled]="processando().has(pedido.id)"></textarea>
+            <div class="acoes">
+              <button type="submit" [disabled]="form.motivo.trim().length < 10 || processando().has(pedido.id) || desatualizados().has(pedido.id)">Confirmar cancelamento</button>
+              <button type="button" (click)="cancelamento.set(null)" [disabled]="processando().has(pedido.id)">Voltar</button>
+            </div>
+          </form>
+        }
+      }
+    </article>
+  } @empty {
+    @if (!carregando() && !erro()) { <p>Nenhum pedido ativo.</p> }
+  }
+</div>
