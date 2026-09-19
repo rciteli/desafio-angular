@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ErroApi } from '../models/pedido';
 
+/** Faz narrowing seguro de HttpErrorResponse para o formato documentado pela API. */
 export function corpoErro(erro: unknown): ErroApi | null {
   if (!(erro instanceof HttpErrorResponse)) return null;
   const corpo: unknown = erro.error;

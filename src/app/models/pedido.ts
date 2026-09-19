@@ -1,5 +1,7 @@
+/** Estados aceitos pelo contrato da API. */
 export type PedidoStatus = 'RECEBIDO' | 'EM_PREPARO' | 'PRONTO' | 'EM_ROTA' | 'ENTREGUE' | 'CANCELADO';
 
+/** Payload completo de um pedido. */
 export interface Pedido {
   id: number;
   codigo: string;
@@ -9,6 +11,7 @@ export interface Pedido {
   valorTotal: number;
   criadoEm: string;
   prometidoPara: string;
+  /** Versão monotônica usada para ignorar eventos SSE antigos ou repetidos. */
   versao: number;
 }
 
@@ -22,6 +25,7 @@ export interface PaginaPedidos extends HorarioServidor {
   totalPaginas: number;
 }
 
+/** Parâmetros enviados a GET /pedidos; o histórico não filtra registros no navegador. */
 export interface FiltrosPedidos {
   page: number;
   size: number;
@@ -46,6 +50,7 @@ export interface ErroApi {
 }
 
 export interface PedidoCriado extends HorarioServidor { pedido: Pedido; }
+/** Evento SSE compacto: não contém os demais campos do pedido. */
 export interface PedidoTransicionado extends HorarioServidor {
   pedidoId: number;
   para: PedidoStatus;

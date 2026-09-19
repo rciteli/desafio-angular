@@ -8,6 +8,7 @@ import { mensagemErro } from '../../shared/erro-api';
 import { STATUS_LABELS, STATUS_PEDIDOS } from '../../shared/regras-pedido';
 import { horarioSaoPaulo } from '../../shared/tempo';
 
+/** Converte query params em filtros válidos e aplica defaults seguros. */
 function lerFiltros(params: ParamMap): FiltrosPedidos {
   const page = Number(params.get('page') ?? 1);
   return {
@@ -20,6 +21,7 @@ function lerFiltros(params: ParamMap): FiltrosPedidos {
   };
 }
 
+/** Histórico paginado cuja URL representa o estado persistente da consulta. */
 @Component({
   selector: 'app-pedidos', standalone: true,
   templateUrl: './pedidos.page.html', styleUrl: './pedidos.page.scss',
@@ -40,6 +42,7 @@ export class PedidosPage {
   readonly horario = horarioSaoPaulo;
 
   constructor() {
+    // switchMap cancela o timer anterior: só há busca após 300 ms sem nova digitação.
     this.buscaDigitada.pipe(
       switchMap(texto => texto === null ? EMPTY : timer(300).pipe(map(() => texto))),
       takeUntilDestroyed(),
@@ -47,6 +50,7 @@ export class PedidosPage {
       if (texto.trim() !== (this.filtros().busca ?? '')) this.alterar({ busca: texto.trim() });
     });
 
+    // Query params são a fonte persistente; `recarga` permite repetir a mesma URL manualmente.
     combineLatest([this.route.queryParamMap, this.recarga.pipe(startWith(undefined))]).pipe(
       switchMap(([params]) => {
         const filtros = lerFiltros(params);
@@ -85,6 +89,7 @@ export class PedidosPage {
     this.alterar({ ordem: ordem === 'desc' ? 'desc' : 'asc' });
   }
 
+  /** Atualiza a URL; o fluxo de queryParamMap é quem dispara a consulta HTTP. */
   alterar(mudanca: Partial<FiltrosPedidos>): void {
     const filtros = { ...this.filtros(), busca: this.busca().trim(), page: 1, ...mudanca };
     this.buscaDigitada.next(null);

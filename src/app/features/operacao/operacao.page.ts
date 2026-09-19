@@ -10,6 +10,7 @@ import { mensagemErro } from '../../shared/erro-api';
 import { STATUS_ATIVOS, STATUS_LABELS, transicoesPermitidas } from '../../shared/regras-pedido';
 import { formatarRestante, horarioSaoPaulo, tempoRestante } from '../../shared/tempo';
 
+/** Painel em tempo real: concilia snapshot HTTP e eventos SSE usando `versao`. */
 @Component({
   selector: 'app-operacao', standalone: true,
   templateUrl: './operacao.page.html', styleUrl: './operacao.page.scss',
@@ -20,7 +21,9 @@ export class OperacaoPage {
   private readonly destroyRef = inject(DestroyRef);
   readonly stream = inject(OperacaoStreamService);
   readonly relogio = inject(RelogioService);
+  /** Map por ID evita duplicação e simplifica a conciliação de snapshots e eventos. */
   private readonly pedidos = signal(new Map<number, Pedido>());
+  /** Transições recebidas antes do payload completo ficam pendentes para conciliação posterior. */
   private readonly eventosPendentes = new Map<number, PedidoTransicionado>();
   private readonly consultas = new Set<number>();
   private readonly carga = new Subject<void>();
@@ -47,6 +50,7 @@ export class OperacaoPage {
   });
 
   constructor() {
+    // Carga principal: switchMap cancela uma carga anterior se houver nova tentativa manual.
     this.carga.pipe(
       switchMap(() => {
         this.carregando.set(true);
@@ -61,6 +65,7 @@ export class OperacaoPage {
       }),
       takeUntilDestroyed(),
     ).subscribe(pedidos => pedidos.forEach(pedido => this.aplicarPedido(pedido)));
+    // Snapshots corretivos usam exhaustMap para impedir chamadas concorrentes durante replay do SSE.
     this.ressincronizacao.pipe(
       exhaustMap(() => this.api.listarAtivos().pipe(
         catchError((erro: unknown) => {
@@ -70,6 +75,7 @@ export class OperacaoPage {
       )),
       takeUntilDestroyed(),
     ).subscribe(pedidos => pedidos.forEach(pedido => this.aplicarPedido(pedido)));
+    // O stream abre em paralelo à carga inicial para reduzir a janela de perda de mudanças.
     this.stream.conectar(
       evento => this.aplicarPedido(evento.pedido),
       evento => this.aplicarTransicao(evento),
@@ -82,6 +88,7 @@ export class OperacaoPage {
     this.desatualizados().forEach(id => this.consultarPedido(id));
   }
 
+  /** A maior `versao` conhecida sempre vence, inclusive sobre respostas HTTP atrasadas. */
   private aplicarPedido(recebido: Pedido): void {
     const atual = this.pedidos().get(recebido.id);
     let pedido = atual && atual.versao >= recebido.versao ? atual : recebido;
@@ -99,6 +106,7 @@ export class OperacaoPage {
   private aplicarTransicao(evento: PedidoTransicionado): void {
     const atual = this.pedidos().get(evento.pedidoId);
     const versao = atual?.versao ?? this.eventosPendentes.get(evento.pedidoId)?.versao ?? -1;
+    // Reconexões podem reenviar eventos já aplicados.
     if (evento.versao <= versao) return;
     if (atual) {
       this.aplicarPedido({ ...atual, status: evento.para, versao: evento.versao });
@@ -167,6 +175,7 @@ export class OperacaoPage {
       catchError((erro: unknown) => {
         this.mensagem.set(mensagemErro(erro, 'Não foi possível alterar o pedido. Verifique a conexão.'));
         if (erro instanceof HttpErrorResponse && erro.status === 409) {
+          // O estado local perdeu uma corrida; novas ações ficam bloqueadas até recuperar o servidor.
           this.desatualizados.update(ids => new Set(ids).add(id));
           return this.api.buscarPedido(id).pipe(
             catchError(() => { this.falhaConsulta(id); return EMPTY; }),

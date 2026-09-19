@@ -3,6 +3,10 @@ import { EstadoConexao, HorarioServidor, PedidoCriado, PedidoTransicionado } fro
 import { API_BASE_URL } from './api.config';
 import { RelogioService } from './relogio.service';
 
+/**
+ * Encapsula o EventSource da operação.
+ * A reconexão é delegada ao navegador, sem implementar retry manual.
+ */
 @Injectable()
 export class OperacaoStreamService {
   private readonly relogio = inject(RelogioService);
@@ -10,6 +14,7 @@ export class OperacaoStreamService {
   readonly conexao = signal<EstadoConexao>('conectando');
 
   constructor() {
+    // O service é fornecido pela OperacaoPage e encerra o stream ao sair da rota.
     inject(DestroyRef).onDestroy(() => this.source?.close());
   }
 
@@ -27,6 +32,7 @@ export class OperacaoStreamService {
       const dados = this.ler<PedidoTransicionado>(evento);
       if (dados) aoTransicionar(dados);
     });
+    // Heartbeat não altera pedidos, mas também pode fornecer o primeiro `servidorEm`.
     source.addEventListener('heartbeat', (evento: MessageEvent<string>) => this.ler<HorarioServidor>(evento));
   }
 
@@ -36,6 +42,7 @@ export class OperacaoStreamService {
       this.relogio.sincronizar(dados.servidorEm);
       return dados;
     } catch {
+      // Um evento malformado é ignorado sem derrubar a conexão SSE.
       return null;
     }
   }
