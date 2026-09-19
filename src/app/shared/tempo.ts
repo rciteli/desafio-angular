@@ -1,3 +1,4 @@
+/** Retorna o delta até o prazo; valores negativos significam pedido atrasado. */
 export function tempoRestante(prometidoPara: string, agoraServidor: number): number {
   return Date.parse(prometidoPara) - agoraServidor;
 }
@@ -9,6 +10,7 @@ export function formatarRestante(milisegundos: number): string {
   return milisegundos < 0 ? `Atrasado há ${duracao}` : `Faltam ${duracao}`;
 }
 
+// Fuso explícito para não depender da configuração de timezone do navegador.
 const formato = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'medium',
 });
