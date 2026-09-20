@@ -79,7 +79,10 @@ export class OperacaoPage {
         }),
       )),
       takeUntilDestroyed(),
-    ).subscribe(snapshot => this.aplicarSnapshot(snapshot));
+    ).subscribe(snapshot => {
+      this.erro.set('');
+      this.aplicarSnapshot(snapshot);
+    });
     // O stream abre em paralelo à carga inicial para reduzir a janela de perda de mudanças.
     this.stream.conectar(
       evento => this.aplicarPedido(evento.pedido),

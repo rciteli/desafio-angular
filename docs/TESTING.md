@@ -2,7 +2,7 @@
 
 ## Requisitos mínimos
 
-- Node.js 24+
+- Node.js compatível com `^24.15.0 || >=26.0.0`
 - pnpm 11.19.0
 - acesso à API oficial
 

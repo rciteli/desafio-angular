@@ -97,6 +97,8 @@ describe('OperacaoPage: concorrência local', () => {
   it('reconcilia ausentes no snapshot sem remover pedidos recebidos por SSE durante a consulta', () => {
     const fixture = iniciar();
     const novo = { ...fixturePedido, id: 999, codigo: 'PED-0999', versao: 1 };
+    const page = fixture.componentInstance;
+    page.erro.set('Erro de ressincronização anterior.');
 
     aoReconectar();
     const snapshot = http.match(r => r.url === `${API_BASE_URL}/pedidos`);
@@ -110,6 +112,7 @@ describe('OperacaoPage: concorrência local', () => {
 
     expect(pageStatus(fixture, 812)).toBeUndefined();
     expect(pageStatus(fixture, 999)).toBe('RECEBIDO');
+    expect(page.erro()).toBe('');
     fixture.destroy();
   });
 
