@@ -17,8 +17,8 @@ pnpm test
 Último resultado validado:
 
 ```text
-Test Files  6 passed (6)
-Tests       9 passed (9)
+Test Files  7 passed (7)
+Tests       11 passed (11)
 ```
 
 ## O que os testes cobrem
@@ -64,6 +64,10 @@ Valida:
 - retorno para página 1 quando a busca muda;
 - renderização de estado vazio.
 
+### `services/operacao-stream.service.spec.ts`
+
+Valida que o primeiro `onopen` não dispara carga adicional e que, após `onerror`, a próxima abertura solicita exatamente uma ressincronização.
+
 ### `features/operacao/operacao.page.spec.ts`
 
 Valida cenários de concorrência da operação, incluindo:
@@ -73,6 +77,8 @@ Valida cenários de concorrência da operação, incluindo:
 - bloqueio de clique duplo;
 - remoção visual de pedido finalizado;
 - ressincronização controlada quando uma transição SSE chega antes do pedido completo;
+- remoção de pedido ativo que desapareceu do snapshot;
+- preservação de pedido que chegou por SSE durante um snapshot em andamento;
 - tratamento de `409` e `422`.
 
 ## Build de produção
@@ -171,9 +177,9 @@ GET /pedidos?...status=EM_ROTA
 GET /operacao/stream   (conexão SSE)
 ```
 
-A aplicação não deve gerar novas cargas completas a cada `onopen` do EventSource.
+A aplicação não deve gerar uma carga adicional no primeiro `onopen` do EventSource. Depois de `onerror`, porém, o próximo `onopen` deve gerar uma única ressincronização dos quatro estados ativos para cobrir eventos possivelmente perdidos durante a queda.
 
-Uma ressincronização adicional dos quatro estados pode ocorrer quando chega uma transição SSE de um ID ainda desconhecido. O fluxo usa `exhaustMap` para impedir snapshots concorrentes.
+Uma ressincronização também pode ocorrer quando chega uma transição SSE de um ID ainda desconhecido. O fluxo usa `exhaustMap` para impedir snapshots corretivos concorrentes. Ao concluir o snapshot, pedidos ativos ausentes são removidos apenas se não receberam uma versão mais nova durante a consulta.
 
 ## Cenários que exigem condições específicas do backend
 

@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { EMPTY, Subject, catchError, exhaustMap, finalize, switchMap } from 'rxjs';
+import { EMPTY, Subject, catchError, exhaustMap, finalize, map, switchMap } from 'rxjs';
 import { Pedido, PedidoStatus, PedidoTransicionado } from '../../models/pedido';
 import { PedidosService } from '../../services/pedidos.service';
 import { OperacaoStreamService } from '../../services/operacao-stream.service';
@@ -9,6 +9,11 @@ import { RelogioService } from '../../services/relogio.service';
 import { mensagemErro } from '../../shared/erro-api';
 import { STATUS_ATIVOS, STATUS_LABELS, transicoesPermitidas } from '../../shared/regras-pedido';
 import { formatarRestante, horarioSaoPaulo, tempoRestante } from '../../shared/tempo';
+
+interface SnapshotAtivos {
+  pedidos: Pedido[];
+  versoesAntes: Map<number, number>;
+}
 
 /** Painel em tempo real: concilia snapshot HTTP e eventos SSE usando `versao`. */
 @Component({
@@ -55,7 +60,7 @@ export class OperacaoPage {
       switchMap(() => {
         this.carregando.set(true);
         this.erro.set('');
-        return this.api.listarAtivos().pipe(
+        return this.listarSnapshotAtivos().pipe(
           catchError((erro: unknown) => {
             this.erro.set(mensagemErro(erro, 'Não foi possível carregar os pedidos.'));
             return EMPTY;
@@ -64,21 +69,22 @@ export class OperacaoPage {
         );
       }),
       takeUntilDestroyed(),
-    ).subscribe(pedidos => pedidos.forEach(pedido => this.aplicarPedido(pedido)));
+    ).subscribe(snapshot => this.aplicarSnapshot(snapshot));
     // Snapshots corretivos usam exhaustMap para impedir chamadas concorrentes durante replay do SSE.
     this.ressincronizacao.pipe(
-      exhaustMap(() => this.api.listarAtivos().pipe(
+      exhaustMap(() => this.listarSnapshotAtivos().pipe(
         catchError((erro: unknown) => {
           this.erro.set(mensagemErro(erro, 'Não foi possível ressincronizar os pedidos.'));
           return EMPTY;
         }),
       )),
       takeUntilDestroyed(),
-    ).subscribe(pedidos => pedidos.forEach(pedido => this.aplicarPedido(pedido)));
+    ).subscribe(snapshot => this.aplicarSnapshot(snapshot));
     // O stream abre em paralelo à carga inicial para reduzir a janela de perda de mudanças.
     this.stream.conectar(
       evento => this.aplicarPedido(evento.pedido),
       evento => this.aplicarTransicao(evento),
+      () => this.ressincronizacao.next(),
     );
     this.recarregar();
   }
@@ -86,6 +92,57 @@ export class OperacaoPage {
   recarregar(): void {
     this.carga.next();
     this.desatualizados().forEach(id => this.consultarPedido(id));
+  }
+
+  /**
+   * Captura as versões ativas existentes antes da consulta. Assim, a reconciliação
+   * só remove um pedido ausente se ele não tiver recebido um SSE mais novo enquanto
+   * o snapshot HTTP estava em andamento.
+   */
+  private listarSnapshotAtivos() {
+    const versoesAntes = new Map<number, number>();
+    for (const pedido of this.pedidos().values()) {
+      if (STATUS_ATIVOS.includes(pedido.status)) versoesAntes.set(pedido.id, pedido.versao);
+    }
+    return this.api.listarAtivos().pipe(map(pedidos => ({ pedidos, versoesAntes })));
+  }
+
+  /**
+   * Concilia o Map local com a fonte da verdade. Além de aplicar os pedidos recebidos,
+   * remove ativos que desapareceram do snapshot sem descartar mudanças SSE concorrentes.
+   */
+  private aplicarSnapshot({ pedidos, versoesAntes }: SnapshotAtivos): void {
+    const idsRecebidos = new Set(pedidos.map(pedido => pedido.id));
+    pedidos.forEach(pedido => this.aplicarPedido(pedido));
+
+    const atuais = this.pedidos();
+    const removidos = [...versoesAntes.entries()].flatMap(([id, versaoAntes]) => {
+      const atual = atuais.get(id);
+      if (!atual || idsRecebidos.has(id) || !STATUS_ATIVOS.includes(atual.status)
+        || atual.versao !== versaoAntes) return [];
+      return [atual];
+    });
+    if (!removidos.length) return;
+
+    const idsRemovidos = new Set(removidos.map(pedido => pedido.id));
+    this.pedidos.update(estado => {
+      const copia = new Map(estado);
+      idsRemovidos.forEach(id => copia.delete(id));
+      return copia;
+    });
+    this.desatualizados.update(ids => {
+      const copia = new Set(ids);
+      idsRemovidos.forEach(id => copia.delete(id));
+      return copia;
+    });
+    removidos.forEach(pedido => this.eventosPendentes.delete(pedido.id));
+
+    const form = this.cancelamento();
+    if (form && idsRemovidos.has(form.id)) {
+      const pedido = removidos.find(item => item.id === form.id);
+      this.cancelamento.set(null);
+      this.mensagem.set(`${pedido?.codigo ?? 'O pedido'} não está mais entre os pedidos ativos. O formulário de cancelamento foi fechado.`);
+    }
   }
 
   /** A maior `versao` conhecida sempre vence, inclusive sobre respostas HTTP atrasadas. */

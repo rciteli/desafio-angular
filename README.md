@@ -6,12 +6,12 @@ A implementação prioriza os requisitos do desafio: código enxuto, tipagem est
 
 ## Status da entrega
 
-Validação local realizada em 18/09/2026:
+Validação local prevista para fechamento deste ajuste em 20/09/2026:
 
 | Verificação | Resultado |
 | --- | --- |
 | `pnpm install` | Concluído |
-| `pnpm test` | **6 arquivos / 9 testes / 9 aprovados** |
+| `pnpm test` | **7 arquivos / 11 testes / 11 aprovados** |
 | `pnpm build` | **Concluído com sucesso** |
 | `pnpm start` | Aplicação iniciada em `http://localhost:4200` |
 | `GET /pedidos` | **200 OK** contra a API oficial |
@@ -156,7 +156,7 @@ pedido.transicionado
 heartbeat
 ```
 
-A reconexão é responsabilidade do próprio `EventSource`; não existe mecanismo de retry manual no frontend.
+A reconexão da conexão é responsabilidade do próprio `EventSource`; não existe mecanismo de retry manual no frontend. Quando um `onopen` ocorre depois de um erro, a página solicita um snapshot autoritativo dos pedidos ativos para cobrir possíveis eventos perdidos durante a queda.
 
 ### `POST /pedidos/{id}/transicoes`
 
@@ -236,7 +236,7 @@ Pedidos entregues ou cancelados permanecem no estado interno da sessão para pre
 
 A API aceita um único `status` por chamada. Por isso a carga da operação consulta os quatro status ativos e percorre todas as páginas de cada grupo.
 
-O resultado é consolidado em memória por ID.
+O resultado é consolidado em memória por ID. Cada snapshot também funciona como reconciliação autoritativa: pedidos ativos que existiam antes da consulta e não aparecem mais na resposta são removidos do estado local. Para não apagar uma atualização SSE concorrente, a remoção só acontece quando a versão local continua igual à versão capturada no início do snapshot.
 
 ### Atualização em tempo real
 
@@ -251,7 +251,7 @@ Quando chega `pedido.transicionado`:
 3. se o pedido já existe, somente status e versão são atualizados;
 4. se o ID ainda não existe, o evento fica pendente e é solicitado um snapshot controlado dos pedidos ativos.
 
-A ressincronização usa `exhaustMap`, evitando snapshots concorrentes em caso de replay ou múltiplos eventos próximos.
+A ressincronização usa `exhaustMap`, evitando snapshots corretivos concorrentes em caso de replay ou múltiplos eventos próximos. Ela também é disparada quando o `EventSource` volta a abrir depois de um erro; o primeiro `onopen` normal não provoca uma segunda carga.
 
 ### Relógio do servidor
 
@@ -386,7 +386,7 @@ Quando a API está inacessível ou retorna um formato inesperado, a aplicação 
 
 ## Testes
 
-A suíte possui **9 testes em 6 arquivos**.
+A suíte possui **11 testes em 7 arquivos**.
 
 Cobertura atual:
 
@@ -399,6 +399,9 @@ Cobertura atual:
 - debounce da busca;
 - concorrência e deduplicação na operação;
 - ressincronização de IDs desconhecidos recebidos por SSE;
+- reconciliação de pedidos que deixaram de existir no snapshot ativo;
+- preservação de pedidos recebidos por SSE enquanto um snapshot está em andamento;
+- ressincronização automática após erro + reconexão real do `EventSource`, sem carga extra no primeiro `onopen`;
 - tratamento de `409` e `422` na operação.
 
 Execução:
@@ -410,8 +413,8 @@ pnpm test
 Resultado validado:
 
 ```text
-Test Files  6 passed (6)
-Tests       9 passed (9)
+Test Files  7 passed (7)
+Tests       11 passed (11)
 ```
 
 Mais detalhes em [`docs/TESTING.md`](docs/TESTING.md).
@@ -457,7 +460,7 @@ desafio-angular/
 
 1. **Signals para estado local:** o estado visível da interface usa `signal()` e `computed()`; RxJS fica restrito aos fluxos assíncronos em que é mais adequado.
 2. **Servidor como autoridade:** não existe sucesso simulado e não existe confirmação otimista de transições.
-3. **SSE nativo:** reconexão automática delegada ao navegador.
+3. **SSE nativo:** reconexão da conexão delegada ao navegador; após uma reconexão real, um snapshot HTTP reconcilia o estado para cobrir eventos que possam ter sido perdidos.
 4. **Versão por pedido:** protege contra replay e eventos fora de ordem.
 5. **Offset de tempo único:** evita depender do relógio configurado no computador do usuário.
 6. **URL como estado do histórico:** permite refresh, compartilhamento e navegação do navegador.
