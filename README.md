@@ -6,7 +6,7 @@ A implementação prioriza os requisitos do desafio: código enxuto, tipagem est
 
 ## Status da entrega
 
-Validação local prevista para fechamento deste ajuste em 20/09/2026:
+Validação local realizada em 20/09/2026:
 
 | Verificação | Resultado |
 | --- | --- |
@@ -31,13 +31,13 @@ Os cenários de `409`, `422`, replay de SSE e conflito de cancelamento possuem t
 - RxJS
 - SCSS
 - pnpm
-- Node.js 24+
+- Node.js compatível com `^24.15.0 || >=26.0.0`
 
 Não são utilizadas bibliotecas de UI, gerenciamento global de estado, SSE ou datas.
 
 ## Pré-requisitos
 
-- Node.js 24 ou superior
+- Node.js compatível com `^24.15.0 || >=26.0.0`
 - pnpm
 
 A versão de pnpm usada no projeto está declarada em `package.json`:
