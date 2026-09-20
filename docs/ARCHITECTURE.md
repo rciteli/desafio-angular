@@ -153,7 +153,7 @@ OperacaoPage
 
 `forkJoin` é usado porque os quatro grupos precisam estar concluídos para formar o snapshot ativo completo.
 
-`expand` percorre páginas adicionais de cada status quando `totalPaginas > pagina`. Antes de cada snapshot, a página registra a versão dos pedidos ativos já conhecidos. Ao terminar, aplica os pedidos recebidos e remove somente os ativos ausentes cuja versão não mudou durante a consulta. Assim, um pedido criado ou atualizado por SSE enquanto o HTTP estava em andamento não é apagado por uma resposta mais antiga.
+`expand` percorre páginas adicionais de cada status quando `totalPaginas > pagina`. Antes de cada snapshot, a página registra a versão dos pedidos ativos já conhecidos. Ao terminar, aplica os pedidos recebidos, libera IDs previamente marcados como desatualizados quando reaparecem na resposta autoritativa e remove somente os ativos ausentes cuja versão não mudou durante a consulta. Assim, um pedido criado ou atualizado por SSE enquanto o HTTP estava em andamento não é apagado por uma resposta mais antiga.
 
 
 ## Fluxo de reconexão do SSE

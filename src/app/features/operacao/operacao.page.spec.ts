@@ -116,6 +116,27 @@ describe('OperacaoPage: concorrência local', () => {
     fixture.destroy();
   });
 
+  it('libera pedido desatualizado quando o snapshot autoritativo o reencontra', () => {
+    const fixture = iniciar();
+    const page = fixture.componentInstance;
+    page.desatualizados.set(new Set([812]));
+    page.erro.set('Não foi possível sincronizar um pedido. Tente novamente para liberar suas ações.');
+
+    aoReconectar();
+    const snapshot = http.match(r => r.url === `${API_BASE_URL}/pedidos`);
+    expect(snapshot).toHaveLength(4);
+    for (const req of snapshot) {
+      const conteudo = req.request.params.get('status') === 'RECEBIDO' ? [fixturePedido] : [];
+      req.flush({
+        servidorEm, conteudo, pagina: 1, tamanho: 20, total: conteudo.length, totalPaginas: 1,
+      });
+    }
+
+    expect(page.desatualizados().has(812)).toBe(false);
+    expect(page.erro()).toBe('');
+    fixture.destroy();
+  });
+
   it('recupera o estado completo depois de 409 e exibe a mensagem do 422', () => {
     const fixture = iniciar();
     const page = fixture.componentInstance;

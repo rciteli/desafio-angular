@@ -18,7 +18,7 @@ pnpm test
 
 ```text
 Test Files  7 passed (7)
-Tests       11 passed (11)
+Tests       12 passed (12)
 ```
 
 ## O que os testes cobrem
@@ -79,6 +79,7 @@ Valida cenários de concorrência da operação, incluindo:
 - ressincronização controlada quando uma transição SSE chega antes do pedido completo;
 - remoção de pedido ativo que desapareceu do snapshot;
 - preservação de pedido que chegou por SSE durante um snapshot em andamento;
+- liberação de pedido desatualizado quando um snapshot autoritativo o reencontra;
 - tratamento de `409` e `422`.
 
 ## Build de produção

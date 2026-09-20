@@ -80,8 +80,8 @@ export class OperacaoPage {
       )),
       takeUntilDestroyed(),
     ).subscribe(snapshot => {
-      this.erro.set('');
       this.aplicarSnapshot(snapshot);
+      if (this.desatualizados().size === 0) this.erro.set('');
     });
     // O stream abre em paralelo à carga inicial para reduzir a janela de perda de mudanças.
     this.stream.conectar(
@@ -117,6 +117,11 @@ export class OperacaoPage {
   private aplicarSnapshot({ pedidos, versoesAntes }: SnapshotAtivos): void {
     const idsRecebidos = new Set(pedidos.map(pedido => pedido.id));
     pedidos.forEach(pedido => this.aplicarPedido(pedido));
+    this.desatualizados.update(ids => {
+      const copia = new Set(ids);
+      idsRecebidos.forEach(id => copia.delete(id));
+      return copia;
+    });
 
     const atuais = this.pedidos();
     const removidos = [...versoesAntes.entries()].flatMap(([id, versaoAntes]) => {
