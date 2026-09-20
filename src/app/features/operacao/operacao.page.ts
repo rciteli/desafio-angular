@@ -30,7 +30,6 @@ export class OperacaoPage {
   private readonly pedidos = signal(new Map<number, Pedido>());
   /** Transições recebidas antes do payload completo ficam pendentes para conciliação posterior. */
   private readonly eventosPendentes = new Map<number, PedidoTransicionado>();
-  private readonly consultas = new Set<number>();
   private readonly carga = new Subject<void>();
   private readonly ressincronizacao = new Subject<void>();
   readonly processando = signal(new Set<number>());
@@ -94,7 +93,6 @@ export class OperacaoPage {
 
   recarregar(): void {
     this.carga.next();
-    this.desatualizados().forEach(id => this.consultarPedido(id));
   }
 
   /**
@@ -182,18 +180,6 @@ export class OperacaoPage {
       this.eventosPendentes.set(evento.pedidoId, evento);
       if (STATUS_ATIVOS.includes(evento.para)) this.ressincronizacao.next();
     }
-  }
-
-  private consultarPedido(id: number): void {
-    if (this.consultas.has(id)) return;
-    this.consultas.add(id);
-    this.api.buscarPedido(id).pipe(
-      finalize(() => this.consultas.delete(id)),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: pedido => this.receberConsulta(id, pedido),
-      error: () => this.falhaConsulta(id),
-    });
   }
 
   private receberConsulta(id: number, pedido: Pedido | null): void {
