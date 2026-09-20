@@ -17,15 +17,19 @@ const fixturePedido: Pedido = {
 
 describe('OperacaoPage: concorrência local', () => {
   let http: HttpTestingController;
+  let aoCriar: (evento: PedidoCriado) => void;
   let aoTransicionar: (evento: PedidoTransicionado) => void;
+  let aoReconectar: () => void;
   beforeEach(() => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     TestBed.overrideComponent(OperacaoPage, { set: { providers: [{
       provide: OperacaoStreamService,
       useValue: {
         conexao: signal<EstadoConexao>('conectado'),
-        conectar: (_criar: (evento: PedidoCriado) => void, transicionar: (evento: PedidoTransicionado) => void) => {
+        conectar: (criar: (evento: PedidoCriado) => void, transicionar: (evento: PedidoTransicionado) => void, reconectar?: () => void) => {
+          aoCriar = criar;
           aoTransicionar = transicionar;
+          aoReconectar = reconectar ?? (() => undefined);
         },
       },
     }] } });
@@ -87,6 +91,25 @@ describe('OperacaoPage: concorrência local', () => {
 
     expect(pageStatus(fixture, 999)).toBe('EM_PREPARO');
     http.expectNone(r => r.url === `${API_BASE_URL}/pedidos` && !r.params.has('status'));
+    fixture.destroy();
+  });
+
+  it('reconcilia ausentes no snapshot sem remover pedidos recebidos por SSE durante a consulta', () => {
+    const fixture = iniciar();
+    const novo = { ...fixturePedido, id: 999, codigo: 'PED-0999', versao: 1 };
+
+    aoReconectar();
+    const snapshot = http.match(r => r.url === `${API_BASE_URL}/pedidos`);
+    expect(snapshot).toHaveLength(4);
+
+    // O pedido 999 chegou depois que o snapshot começou e não pode ser removido pela resposta antiga.
+    aoCriar({ servidorEm, pedido: novo });
+    snapshot.forEach(req => req.flush({
+      servidorEm, conteudo: [], pagina: 1, tamanho: 20, total: 0, totalPaginas: 1,
+    }));
+
+    expect(pageStatus(fixture, 812)).toBeUndefined();
+    expect(pageStatus(fixture, 999)).toBe('RECEBIDO');
     fixture.destroy();
   });
 

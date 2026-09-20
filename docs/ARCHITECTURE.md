@@ -85,9 +85,10 @@ Responsabilidades:
 - registrar listeners para os eventos documentados;
 - fazer parse do JSON;
 - encaminhar `servidorEm` ao relógio;
-- entregar eventos tipados à página.
+- entregar eventos tipados à página;
+- avisar a página quando a conexão volta depois de um erro, para que ela solicite uma reconciliação HTTP.
 
-A reconexão não é implementada manualmente. O navegador cuida disso através de `EventSource`.
+A reconexão da conexão não é implementada manualmente. O navegador cuida disso através de `EventSource`. O primeiro `onopen` apenas marca a conexão como ativa; um `onopen` posterior a `onerror` também dispara o callback de ressincronização.
 
 ### `RelogioService`
 
@@ -150,9 +151,34 @@ OperacaoPage
                  Map<id, Pedido> da página
 ```
 
-`forkJoin` é usado porque os quatro grupos precisam estar concluídos para formar o snapshot inicial completo.
+`forkJoin` é usado porque os quatro grupos precisam estar concluídos para formar o snapshot ativo completo.
 
-`expand` percorre páginas adicionais de cada status quando `totalPaginas > pagina`.
+`expand` percorre páginas adicionais de cada status quando `totalPaginas > pagina`. Antes de cada snapshot, a página registra a versão dos pedidos ativos já conhecidos. Ao terminar, aplica os pedidos recebidos e remove somente os ativos ausentes cuja versão não mudou durante a consulta. Assim, um pedido criado ou atualizado por SSE enquanto o HTTP estava em andamento não é apagado por uma resposta mais antiga.
+
+
+## Fluxo de reconexão do SSE
+
+```text
+EventSource conectado
+       │
+       ├─ onerror → estado = reconectando
+       │              │
+       │              └─ navegador tenta reconectar
+       │
+       └─ onopen após erro
+              │
+              ├─ estado = conectado
+              └─ solicitar snapshot dos ativos
+                         │
+                         ▼
+                 aplicarSnapshot()
+                         │
+                         ├─ atualiza/adiciona recebidos
+                         ├─ remove ativos ausentes e inalterados
+                         └─ preserva mudanças SSE concorrentes
+```
+
+O callback não executa no primeiro `onopen` normal, evitando duplicar a carga inicial. O `exhaustMap` continua impedindo que múltiplos gatilhos de ressincronização produzam snapshots corretivos paralelos.
 
 ## Fluxo de um evento `pedido.criado`
 

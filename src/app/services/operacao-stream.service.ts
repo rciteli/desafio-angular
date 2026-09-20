@@ -19,11 +19,24 @@ export class OperacaoStreamService {
   }
 
   conectar(aoCriar: (evento: PedidoCriado) => void,
-    aoTransicionar: (evento: PedidoTransicionado) => void): void {
+    aoTransicionar: (evento: PedidoTransicionado) => void,
+    aoReconectar?: () => void): void {
     this.source?.close();
     const source = this.source = new EventSource(`${API_BASE_URL}/operacao/stream`);
-    source.onopen = () => this.conexao.set('conectado');
-    source.onerror = () => this.conexao.set('reconectando');
+    let precisaRessincronizar = false;
+    source.onopen = () => {
+      this.conexao.set('conectado');
+      // O primeiro open normal não gera nova carga. Depois de um erro, porém, o
+      // snapshot autoritativo fecha a janela em que eventos podem ter sido perdidos.
+      if (precisaRessincronizar) {
+        precisaRessincronizar = false;
+        aoReconectar?.();
+      }
+    };
+    source.onerror = () => {
+      precisaRessincronizar = true;
+      this.conexao.set('reconectando');
+    };
     source.addEventListener('pedido.criado', (evento: MessageEvent<string>) => {
       const dados = this.ler<PedidoCriado>(evento);
       if (dados) aoCriar(dados);
