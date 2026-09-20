@@ -116,15 +116,16 @@ describe('OperacaoPage: concorrência local', () => {
     fixture.destroy();
   });
 
-  it('libera pedido desatualizado quando o snapshot autoritativo o reencontra', () => {
+  it('retry manual usa somente o snapshot autoritativo para liberar pedido desatualizado', () => {
     const fixture = iniciar();
     const page = fixture.componentInstance;
     page.desatualizados.set(new Set([812]));
     page.erro.set('Não foi possível sincronizar um pedido. Tente novamente para liberar suas ações.');
 
-    aoReconectar();
+    page.recarregar();
     const snapshot = http.match(r => r.url === `${API_BASE_URL}/pedidos`);
     expect(snapshot).toHaveLength(4);
+    expect(snapshot.every(req => req.request.params.has('status'))).toBe(true);
     for (const req of snapshot) {
       const conteudo = req.request.params.get('status') === 'RECEBIDO' ? [fixturePedido] : [];
       req.flush({
