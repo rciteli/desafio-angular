@@ -11,7 +11,7 @@ Validação local realizada em 20/09/2026:
 | Verificação | Resultado |
 | --- | --- |
 | `pnpm install` | Concluído |
-| `pnpm test` | **7 arquivos / 11 testes / 11 aprovados** |
+| `pnpm test` | **7 arquivos / 12 testes / 12 aprovados** |
 | `pnpm build` | **Concluído com sucesso** |
 | `pnpm start` | Aplicação iniciada em `http://localhost:4200` |
 | `GET /pedidos` | **200 OK** contra a API oficial |
@@ -386,7 +386,7 @@ Quando a API está inacessível ou retorna um formato inesperado, a aplicação 
 
 ## Testes
 
-A suíte possui **11 testes em 7 arquivos**.
+A suíte possui **12 testes em 7 arquivos**.
 
 Cobertura atual:
 
@@ -401,6 +401,7 @@ Cobertura atual:
 - ressincronização de IDs desconhecidos recebidos por SSE;
 - reconciliação de pedidos que deixaram de existir no snapshot ativo;
 - preservação de pedidos recebidos por SSE enquanto um snapshot está em andamento;
+- liberação de pedidos marcados como desatualizados quando reaparecem em snapshot autoritativo;
 - ressincronização automática após erro + reconexão real do `EventSource`, sem carga extra no primeiro `onopen`;
 - tratamento de `409` e `422` na operação.
 
@@ -414,7 +415,7 @@ Resultado validado:
 
 ```text
 Test Files  7 passed (7)
-Tests       11 passed (11)
+Tests       12 passed (12)
 ```
 
 Mais detalhes em [`docs/TESTING.md`](docs/TESTING.md).
