@@ -19,6 +19,7 @@ const TRANSICOES: Record<PedidoStatus, readonly PedidoStatus[]> = {
   CANCELADO: [],
 };
 
+/* Retorna os status permitidos a partir do status atual, para habilitar/desabilitar botões de ação. */
 export function transicoesPermitidas(status: PedidoStatus): readonly PedidoStatus[] {
   return TRANSICOES[status];
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { tempoRestante } from './tempo';
 
+/// Testes unitários para a função tempoRestante
 describe('tempoRestante', () => {
   it('calcula prazo futuro e ultrapassado usando a referência do servidor', () => {
     const agoraServidor = Date.parse('2026-09-11T14:22:31-03:00');

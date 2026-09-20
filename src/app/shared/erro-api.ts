@@ -10,6 +10,7 @@ export function corpoErro(erro: unknown): ErroApi | null {
   return corpo as ErroApi;
 }
 
+// Retorna a mensagem de erro da API, ou uma alternativa caso não seja possível extrair.
 export function mensagemErro(erro: unknown, alternativa: string): string {
   return corpoErro(erro)?.message || alternativa;
 }
